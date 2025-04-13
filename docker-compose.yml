@@ -4,6 +4,7 @@ services:
   mongodb:
     image: mongo:latest
     container_name: mongodb
+    restart: unless-stopped
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=root
@@ -12,6 +13,57 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - mando-network
+    command: ["--auth", "--bind_ip_all"]
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh mongodb://root:root@localhost:27017/admin --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=root
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=root
+      - ME_CONFIG_MONGODB_URL=mongodb://root:root@mongodb:27017/
+      - ME_CONFIG_BASICAUTH_USERNAME=root
+      - ME_CONFIG_BASICAUTH_PASSWORD=root
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mando-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mando-app
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      - MONGO_URI=mongodb://root:root@mongodb:27017
+      - MONGO_DATABASE=mando
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=root
+    networks:
+      - mando-network
+
+networks:
+  mando-network:
+    driver: bridge
 
 volumes:
   mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
