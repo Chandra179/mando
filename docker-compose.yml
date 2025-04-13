@@ -47,6 +47,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: mando-app
+    ports:
+      - "8080:8080"  # Add port mapping
     depends_on:
       mongodb:
         condition: service_healthy

@@ -1,0 +1,55 @@
+basePath: /api
+definitions:
+  skills.AddSkillRequest:
+    description: Model for adding skills
+    properties:
+      skills:
+        description: List of skills to add
+        example:
+        - Go
+        items:
+          type: string
+        type: array
+    required:
+    - skills
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: This is the Mando server API documentation
+  title: Mando API
+  version: "1.0"
+paths:
+  /skills/add:
+    post:
+      consumes:
+      - application/json
+      description: Add one or more skills
+      parameters:
+      - description: Skills to add
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/skills.AddSkillRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Skills added successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: error message'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Add new skills
+      tags:
+      - skills
+schemes:
+- http
+swagger: "2.0"

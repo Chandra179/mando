@@ -16,8 +16,10 @@ RUN apk add --no-cache git ca-certificates && update-ca-certificates
 # Copy go mod and sum files
 COPY go.mod go.sum* ./
 
-# Download dependencies
-RUN go mod download
+# Download dependencies with BuildKit cache
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download
 
 # Copy source code
 COPY . .

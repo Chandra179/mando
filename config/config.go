@@ -21,9 +21,14 @@ type MongoDBConfig struct {
 	Password        string
 }
 
+type HttpServerConfig struct {
+	Port string
+}
+
 // Config holds all application configurations
 type Config struct {
-	MongoDB MongoDBConfig
+	MongoDB    MongoDBConfig
+	HttpServer HttpServerConfig
 }
 
 // LoadConfig loads configuration from environment variables
@@ -44,9 +49,13 @@ func LoadConfig() (*Config, error) {
 		Username:        getEnv("MONGO_USERNAME", "root"),
 		Password:        getEnv("MONGO_PASSWORD", "root"),
 	}
+	httpServerConfig := HttpServerConfig{
+		Port: getEnv("HTTP_PORT", "8080"),
+	}
 
 	return &Config{
-		MongoDB: mongoConfig,
+		MongoDB:    mongoConfig,
+		HttpServer: httpServerConfig,
 	}, nil
 }
 
