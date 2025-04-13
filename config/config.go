@@ -35,7 +35,7 @@ func LoadConfig() (*Config, error) {
 
 	// Default values
 	mongoConfig := MongoDBConfig{
-		URI:             getEnv("MONGO_URI", "mongodb://localhost:27017"),
+		URI:             getEnv("MONGO_URI", "mongodb://mongodb:27017"),
 		Database:        getEnv("MONGO_DATABASE", "mando"),
 		ConnectTimeout:  time.Duration(getEnvAsInt("MONGO_CONNECT_TIMEOUT", 10)) * time.Second,
 		MaxConnIdleTime: time.Duration(getEnvAsInt("MONGO_MAX_CONN_IDLE_TIME", 60)) * time.Second,

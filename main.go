@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"mando/config"
-)
+
 
 func main() {
 	// Load configuration from environment variables (.env file)
@@ -21,8 +24,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize MongoDB: %v", err)
 	}
+	if err = mongoDB.NewCollection(context.Background(), "skills"); err != nil {
+		log.Fatalf("Failed to create collection: %v", err)
+	}
 
 	log.Printf("Connected to MongoDB database: %s", cfg.MongoDB.Database)
+	collection := mongoDB.Database.Collection("skills")
+
 
 	// Set up graceful shutdown
 	quit := make(chan os.Signal, 1)

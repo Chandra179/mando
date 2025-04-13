@@ -25,8 +25,8 @@ func NewMongoDB(config MongoDBConfig) (*MongoDB, error) {
 
 	// Build connection URI if not explicitly provided
 	uri := config.URI
-	if uri == "mongodb://localhost:27017" && (config.Username != "" || config.Password != "") {
-		uri = fmt.Sprintf("mongodb://%s:%s@localhost:27017", config.Username, config.Password)
+	if uri == "mongodb://mongodb:27017" && (config.Username != "" || config.Password != "") {
+		uri = fmt.Sprintf("mongodb://%s:%s@mongodb:27017", config.Username, config.Password)
 	}
 
 	// Configure client options
@@ -55,6 +55,10 @@ func NewMongoDB(config MongoDBConfig) (*MongoDB, error) {
 		Database: client.Database(config.Database),
 		Config:   config,
 	}, nil
+}
+
+func (m *MongoDB) NewCollection(ctx context.Context, collectionName string) error {
+	return m.Database.CreateCollection(ctx, collectionName)
 }
 
 // Close gracefully closes the MongoDB connection
