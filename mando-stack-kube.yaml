@@ -1,25 +1,6 @@
-# mando-stack-kube-nosecret.yaml  <-- Suggested new name
-#
-# Kubernetes configuration to deploy a full application stack consisting of:
-# 1. MongoDB: Database using persistent storage.
-# 2. Go Application (Mando App): Custom application connecting to MongoDB.
-# 3. Mongo Express: Web UI for managing MongoDB.
-#
-# *** DEVELOPMENT VERSION - USES HARDCODED CREDENTIALS (INSECURE) ***
-# *** DO NOT USE IN PRODUCTION ***
-# Designed for local deployment using Minikube.
-
-# --- Resource Separator ---
-
-# 1. Secret object REMOVED
-
-# --- Resource Separator ---
-
-# 2. PersistentVolumeClaim (PVC): Requests persistent storage
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  # Name used to reference this storage request
   name: mongodb-pvc
 spec:
   # Defines how the volume can be mounted
@@ -32,16 +13,13 @@ spec:
       # Request 1 Gibibyte of storage space
       storage: 1Gi # Adjust size as needed for local development
 
---- # --- Resource Separator ---
+---
 
-# 3. Deployment: Manages the MongoDB application Pod(s)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  # Name of the Deployment object
   name: mongodb-deployment
 spec:
-  # Number of desired MongoDB instances (Pods)
   replicas: 1
   # Selector to identify the Pods managed by this Deployment
   selector:
@@ -98,7 +76,7 @@ spec:
           persistentVolumeClaim:
             claimName: mongodb-pvc
 
---- # --- Resource Separator ---
+---
 
 # 4. Service: Provides stable network access to MongoDB Pods
 apiVersion: v1
@@ -119,7 +97,7 @@ spec:
       port: 27017 # Port the Service listens on
       targetPort: 27017 # Port on the Pods to forward traffic to
 
---- # --- Resource Separator ---
+---
 
 # 5. Deployment: Manages the Go application (Mando App) Pod(s)
 apiVersion: apps/v1
@@ -162,7 +140,7 @@ spec:
             # MONGO_USERNAME and MONGO_PASSWORD variables that used Secrets are removed
             # Ensure your Go App uses MONGO_URI directly now
 
---- # --- Resource Separator ---
+---
 
 # 6. Service: Exposes the Go application externally
 apiVersion: v1
@@ -189,7 +167,7 @@ spec:
       # Range: 30000-32767. If omitted, Kubernetes assigns a random one.
       nodePort: 30080
 
---- # --- Resource Separator ---
+---
 
 # 7. Deployment: Manages the Mongo Express web UI Pod(s)
 apiVersion: apps/v1
@@ -245,7 +223,7 @@ spec:
             - name: ME_CONFIG_BASICAUTH_PASSWORD
               value: "root"
 
---- # --- Resource Separator ---
+---
 
 # 8. Service: Exposes the Mongo Express web UI externally
 apiVersion: v1
