@@ -1,0 +1,271 @@
+# mando-stack-kube-nosecret.yaml  <-- Suggested new name
+#
+# Kubernetes configuration to deploy a full application stack consisting of:
+# 1. MongoDB: Database using persistent storage.
+# 2. Go Application (Mando App): Custom application connecting to MongoDB.
+# 3. Mongo Express: Web UI for managing MongoDB.
+#
+# *** DEVELOPMENT VERSION - USES HARDCODED CREDENTIALS (INSECURE) ***
+# *** DO NOT USE IN PRODUCTION ***
+# Designed for local deployment using Minikube.
+
+# --- Resource Separator ---
+
+# 1. Secret object REMOVED
+
+# --- Resource Separator ---
+
+# 2. PersistentVolumeClaim (PVC): Requests persistent storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  # Name used to reference this storage request
+  name: mongodb-pvc
+spec:
+  # Defines how the volume can be mounted
+  # ReadWriteOnce: Can be mounted as read-write by a single Node (suitable for single-instance DB)
+  accessModes:
+    - ReadWriteOnce
+  # Specifies the required resources
+  resources:
+    requests:
+      # Request 1 Gibibyte of storage space
+      storage: 1Gi # Adjust size as needed for local development
+
+--- # --- Resource Separator ---
+
+# 3. Deployment: Manages the MongoDB application Pod(s)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # Name of the Deployment object
+  name: mongodb-deployment
+spec:
+  # Number of desired MongoDB instances (Pods)
+  replicas: 1
+  # Selector to identify the Pods managed by this Deployment
+  selector:
+    matchLabels:
+      app: mongodb # Must match the labels defined in the Pod template below
+  # Pod Template: Blueprint for creating the MongoDB Pods
+  template:
+    metadata:
+      # Labels applied to each Pod created by this Deployment
+      labels:
+        app: mongodb # Used by the selector and the MongoDB Service
+    spec:
+      # Defines the containers running within the Pod
+      containers:
+        - name: mongodb # Name of the container
+          image: mongo:latest # Docker image to use
+          ports:
+            # Port the MongoDB process listens on inside the container
+            - containerPort: 27017
+          # Environment variables passed to the container
+          env:
+            # Set initial MongoDB root username directly (INSECURE)
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: "root"
+            # Set initial MongoDB root password directly (INSECURE)
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: "root"
+            # Specify the initial database to be created
+            - name: MONGO_INITDB_DATABASE
+              value: "mando"
+          # Mounts persistent storage into the container
+          volumeMounts:
+            # Name must match a volume defined in the 'volumes' section below
+            - name: mongodb-data
+              # Path inside the container where the volume should be mounted
+              mountPath: /data/db # Standard MongoDB data directory
+          # Readiness Probe: Checks if the container is ready to serve traffic
+          readinessProbe:
+            tcpSocket:
+              port: 27017 # Check if the MongoDB port is open
+            initialDelaySeconds: 5 # Wait 5s before first check
+            periodSeconds: 10 # Check every 10s
+          # Liveness Probe: Checks if the container is still healthy
+          livenessProbe:
+            tcpSocket:
+              port: 27017 # Check if the MongoDB port is open
+            initialDelaySeconds: 15 # Wait 15s before first check
+            periodSeconds: 20 # Check every 20s
+      # Defines the volumes used by the Pod
+      volumes:
+        # Name of the volume (referenced in volumeMounts above)
+        - name: mongodb-data
+          # Use the PersistentVolumeClaim defined earlier
+          persistentVolumeClaim:
+            claimName: mongodb-pvc
+
+--- # --- Resource Separator ---
+
+# 4. Service: Provides stable network access to MongoDB Pods
+apiVersion: v1
+kind: Service
+metadata:
+  # Name of the Service - used as the internal DNS name for connection
+  name: mongodb-service
+spec:
+  # Type of Service
+  # ClusterIP: Exposes the service on an internal IP only reachable within the cluster. Default type.
+  type: ClusterIP
+  # Selector to find the Pods this Service should route traffic to
+  selector:
+    app: mongodb # Must match the 'app' label on the MongoDB Pods
+  # Port mapping for the Service
+  ports:
+    - protocol: TCP
+      port: 27017 # Port the Service listens on
+      targetPort: 27017 # Port on the Pods to forward traffic to
+
+--- # --- Resource Separator ---
+
+# 5. Deployment: Manages the Go application (Mando App) Pod(s)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # Name of the Deployment object for the Go app
+  name: mando-app-deployment
+spec:
+  # Number of desired Go application instances (Pods)
+  replicas: 1
+  # Selector to identify the Pods managed by this Deployment
+  selector:
+    matchLabels:
+      app: mando-app # Must match the labels defined in the Pod template below
+  # Pod Template: Blueprint for creating the Go application Pods
+  template:
+    metadata:
+      # Labels applied to each Pod created by this Deployment
+      labels:
+        app: mando-app # Used by the selector and the Go App Service
+    spec:
+      # Defines the containers running within the Pod
+      containers:
+        - name: mando-app-container # Name of the container
+          # Use the locally built image name and tag
+          image: mando-app:latest
+          # Tell Kubernetes not to pull from a remote registry
+          imagePullPolicy: Never # Or IfNotPresent
+          ports:
+            # Port the Go application listens on inside the container (must match Dockerfile EXPOSE)
+            - containerPort: 8080
+          # Environment variables passed to the Go application container
+          env:
+            # Construct the MongoDB connection URI with HARDCODED credentials (INSECURE)
+            - name: MONGO_URI
+              value: "mongodb://root:root@mongodb-service:27017/mando?authSource=admin"
+            # Provide the database name (still useful if app reads it separately)
+            - name: MONGO_DATABASE
+              value: "mando"
+            # MONGO_USERNAME and MONGO_PASSWORD variables that used Secrets are removed
+            # Ensure your Go App uses MONGO_URI directly now
+
+--- # --- Resource Separator ---
+
+# 6. Service: Exposes the Go application externally
+apiVersion: v1
+kind: Service
+metadata:
+  # Name of the Service for the Go application
+  name: mando-app-service
+spec:
+  # Type of Service
+  # NodePort: Exposes the service on each Node's IP at a static port (the NodePort).
+  # Makes it accessible from outside the Minikube cluster.
+  type: NodePort
+  # Selector to find the Pods this Service should route traffic to
+  selector:
+    app: mando-app # Must match the 'app' label on the Go App Pods
+  # Port mapping for the Service
+  ports:
+    - protocol: TCP
+      # Port the Service listens on internally within the cluster
+      port: 8080
+      # Port on the Go App Pods to forward traffic to (must match containerPort)
+      targetPort: 8080
+      # Static port number on the Minikube node where the service is exposed externally
+      # Range: 30000-32767. If omitted, Kubernetes assigns a random one.
+      nodePort: 30080
+
+--- # --- Resource Separator ---
+
+# 7. Deployment: Manages the Mongo Express web UI Pod(s)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # Name of the Deployment object for Mongo Express
+  name: mongo-express-deployment
+spec:
+  # Number of desired Mongo Express instances (Pods)
+  replicas: 1
+  # Selector to identify the Pods managed by this Deployment
+  selector:
+    matchLabels:
+      app: mongo-express # Must match the labels defined in the Pod template below
+  # Pod Template: Blueprint for creating the Mongo Express Pods
+  template:
+    metadata:
+      # Labels applied to each Pod created by this Deployment
+      labels:
+        app: mongo-express # Used by the selector and the Mongo Express Service
+    spec:
+      # Defines the containers running within the Pod
+      containers:
+        - name: mongo-express # Name of the container
+          image: mongo-express:latest # Docker image to use
+          imagePullPolicy: IfNotPresent
+          ports:
+            # Port the Mongo Express process listens on inside the container
+            - containerPort: 8081
+          # Environment variables passed to the Mongo Express container
+          env:
+            # Configure connection to MongoDB using the Kubernetes Service name
+            - name: ME_CONFIG_MONGODB_SERVER
+              value: mongodb-service
+            - name: ME_CONFIG_MONGODB_PORT
+              value: "27017"
+            # Attempt to authenticate as admin user to MongoDB
+            - name: ME_CONFIG_MONGODB_ENABLE_ADMIN
+              value: "true"
+            # Specify the authentication database for the admin user (Corrected to 'admin')
+            - name: ME_CONFIG_MONGODB_AUTH_DATABASE
+              value: "admin"
+            # Provide MongoDB admin username directly (INSECURE)
+            - name: ME_CONFIG_MONGODB_ADMINUSERNAME
+              value: "root"
+            # Provide MongoDB admin password directly (INSECURE)
+            - name: ME_CONFIG_MONGODB_ADMINPASSWORD
+              value: "root"
+            # Configure Basic Authentication for the Mongo Express UI itself
+            # !!! WARNING: Hardcoding Basic Auth like this is insecure; use Secrets for real apps !!!
+            - name: ME_CONFIG_BASICAUTH_USERNAME
+              value: "root"
+            - name: ME_CONFIG_BASICAUTH_PASSWORD
+              value: "root"
+
+--- # --- Resource Separator ---
+
+# 8. Service: Exposes the Mongo Express web UI externally
+apiVersion: v1
+kind: Service
+metadata:
+  # Name of the Service for Mongo Express
+  name: mongo-express-service
+spec:
+  # Type of Service
+  # NodePort: Makes it accessible from outside the Minikube cluster.
+  type: NodePort
+  # Selector to find the Pods this Service should route traffic to
+  selector:
+    app: mongo-express # Must match the 'app' label on the Mongo Express Pods
+  # Port mapping for the Service
+  ports:
+    - protocol: TCP
+      # Port the Service listens on internally within the cluster
+      port: 8081
+      # Port on the Mongo Express Pods to forward traffic to (must match containerPort)
+      targetPort: 8081
+      # Static port number on the Minikube node where the service is exposed externally
+      nodePort: 30081 # Range: 30000-32767
