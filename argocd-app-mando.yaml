@@ -1,18 +1,19 @@
 apiVersion: argoproj.io/v1alpha1
-kind: Application
+kind: Application        # <--- This one HAS a 'spec' field
 metadata:
-  name: mando-stack      # Name shown in Argo CD UI
-  namespace: argocd      # Must be in Argo CD's namespace
-spec:
+  name: mando-stack
+  namespace: argocd
+spec:                   # <--- 'spec' belongs here
   project: default
   source:
-    repoURL: 'PASTE_YOUR_GIT_REPO_URL_HERE' # !!! REPLACE !!!
-    path: 'PASTE_PATH_TO_YAML_DIRECTORY_HERE'    # !!! REPLACE (e.g., '.') !!!
+    repoURL: 'https://github.com/Chandra179/mando'
+    path: '.'
     targetRevision: HEAD
   destination:
-    server: 'https://kubernetes.default.svc' # Target local cluster
-    namespace: default # Namespace to deploy the app into
+    server: 'https://kubernetes.default.svc'
+    namespace: default
   syncPolicy:
-    # syncOptions:
-    # - CreateNamespace=true # Optional: Create the namespace if it doesn't exist
-    # automated: {} # Optional: Uncomment for automatic sync
+    # Optional settings
+    # automated:
+    #   prune: true
+    #   selfHeal: true
