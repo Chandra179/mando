@@ -24,3 +24,6 @@ go.work.sum
 # env file
 .env
 vendor
+/terraform/terraform.tfstate
+/terraform/terraform.tfstate.backup
+.terraform

@@ -39,10 +39,6 @@ RUN apk --no-cache add ca-certificates tzdata
 # Copy the binary from the builder stage
 COPY --from=builder /app/mando /app/mando
 
-# Copy .env file - only if you want to include it in the container
-# For production, consider using environment variables instead
-COPY .env* ./
-
 # Set the binary as executable
 RUN chmod +x /app/mando
 
