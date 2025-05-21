@@ -47,8 +47,3 @@ kubectl create namespace argocd
 kubectl delete -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 kubectl delete namespace argocd
 ```
-
-### Openstack
-```
-https://docs.openstack.org/devstack/latest/
-```
